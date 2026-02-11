@@ -1,0 +1,26 @@
+body {
+    margin: 0;
+    font-family: Arial;
+    background: #1a1a2e;
+    color: white;
+}
+
+.sidebar {
+    width: 250px;
+    height: 100vh;
+    background: #16213e;
+    position: fixed;
+    padding: 20px;
+}
+
+.content {
+    margin-left: 270px;
+    padding: 30px;
+}
+
+.card {
+    background: #0f3460;
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+}

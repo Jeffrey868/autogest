@@ -1,0 +1,6 @@
+code .gitignore
+*.pyc
+*.db
+.env
+.idea/
+__pycache__/
