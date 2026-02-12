@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>AutoGest - Login</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body style="display:flex; align-items:center; justify-content:center; height:100vh; background:#1a1a2e;">
+    <div class="modal-content" style="display:block; width: 350px;">
+        <h2 style="text-align:center; color:#e94560;">AutoGest Login</h2>
+        <input type="email" id="email" placeholder="E-mail" value="admin@admin.com">
+        <input type="password" id="senha" placeholder="Senha" value="admin123">
+        <button onclick="fazerLogin()" style="width:100%; background:#e94560; color:white; padding:12px; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">Entrar</button>
+    </div>
+
+    <script>
+        // URL do backend hospedado no Render
+        const API_URL = "https://autogest-backend-ikmb.onrender.com";
+
+        async function fazerLogin() {
+            const res = await fetch(`${API_URL}/login`, {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    email: document.getElementById("email").value,
+                    senha: document.getElementById("senha").value
+                })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                // Salva o token no navegador para manter o usuário logado
+                localStorage.setItem("token", data.access_token);
+                window.location.href = "dashboard.html";
+            } else {
+                alert("Erro: Verifique e-mail e senha.");
+            }
+        }
+    </script>
+</body>
+</html>

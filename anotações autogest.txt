@@ -181,3 +181,52 @@ Depois rode:
 
 python -m http.server 5500
 --------------------------------------------------
+
+🌐 1. Uso Diário (Para você e seu cliente)
+Como o seu sistema já está "vivo" na nuvem do Render, você não precisa ligar o servidor no seu computador.
+
+Abra a pasta do projeto no seu computador.
+
+Abra o arquivo login.html em qualquer navegador (Chrome, Edge ou Firefox).
+
+Insira o e-mail e senha (ex: admin@admin.com / admin123).
+
+Use o Dashboard: Assim que entrar, o sistema vai buscar no Render o seu Patrimônio de R$ 53.000,00 e a lista de veículos.
+
+🔄 2. Como atualizar o sistema (Sempre que mudar o código)
+Toda vez que você mexer no main.py, dashboard.html ou em qualquer outro arquivo, você precisa seguir estes passos para o site na internet atualizar:
+
+Salve as alterações nos arquivos (Ctrl + S).
+
+Abra o Terminal (PowerShell ou CMD) dentro da pasta autogest.
+
+Execute os comandos do Git:
+
+git add . (Prepara todos os arquivos modificados).
+
+git commit -m "Explique aqui o que você mudou" (Cria uma etiqueta da mudança).
+
+git push origin main (Envia os arquivos para o GitHub e Render).
+
+Verifique o Render: Entre no site do Render e veja se o log mostra "Your service is live". Se aparecer algum erro vermelho (como o de ModuleNotFoundError que resolvemos), significa que faltou algo no requirements.txt.
+
+⚡ 3. Usando a Nova Consulta RENAVE
+Agora que o requests está instalado, o fluxo de consulta é este:
+
+No Dashboard, vá no campo "Consultar RENAVE".
+
+Digite a Placa do veículo (ex: HCC2716).
+
+Clique no Botão: O sistema vai buscar os dados e abrir o modal de cadastro já com Marca e Modelo preenchidos.
+
+Salve: O veículo entrará no estoque e o valor de R$ 53.000,00 (ou o valor que você definir) será somado ao patrimônio total.
+
+🛠️ 4. O que fazer se o sistema der erro?
+Se ao clicar em "Remover" aparecer a mensagem "Erro ao excluir o veículo do servidor":
+
+Confira o Render: Veja se o serviço não está "Down" ou com erro de build.
+
+Internet: Verifique se você está conectado, pois o sistema precisa falar com o banco de dados online.
+
+Login: Tente sair e entrar novamente (Logout/Login) para renovar o acesso.
+--------------------------------------------------
