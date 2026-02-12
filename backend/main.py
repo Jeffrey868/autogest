@@ -64,22 +64,28 @@ def get_usuario_logado(token: str = Depends(oauth2_scheme)):
 
 
 # ----------------------------
-# Criar admin automático
+# Criar admin automático (Versão Corrigida)
 # ----------------------------
 @app.on_event("startup")
 def criar_admin():
     db = SessionLocal()
     try:
+        # Busca o admin existente
         admin = db.query(Usuario).filter(Usuario.email == "admin@admin.com").first()
         if not admin:
+            # Forçamos uma string limpa para evitar erro de encoding/bytes
+            senha_plana = "admin123"
             novo_admin = Usuario(
                 email="admin@admin.com",
-                senha=hash_senha("admin123")
+                senha=hash_senha(senha_plana)
             )
             db.add(novo_admin)
             db.commit()
             print("Admin criado automaticamente ✔")
+        else:
+            print("Admin já existe no banco.")
     except Exception as e:
+        db.rollback() # Limpa a transação falha para não travar o banco
         print(f"Erro ao criar admin: {e}")
     finally:
         db.close()

@@ -12,6 +12,7 @@ body {
     justify-content:center;
     align-items:center;
     height:100vh;
+    margin: 0;
 }
 
 .login-box {
@@ -19,19 +20,22 @@ body {
     padding:40px;
     border-radius:10px;
     width:300px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
 }
 
 h2 {
     color:white;
     text-align:center;
+    margin-bottom: 20px;
 }
 
 input {
-    width:100%;
-    padding:10px;
-    margin:10px 0;
-    border:none;
-    border-radius:5px;
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    border: none;
+    border-radius: 5px;
+    box-sizing: border-box; /* Garante que o padding não quebre a largura */
 }
 
 button {
@@ -42,15 +46,19 @@ button {
     border:none;
     border-radius:5px;
     cursor:pointer;
+    font-weight: bold;
+    margin-top: 10px;
 }
 
 button:hover {
-    opacity:0.9;
+    background: #ff4d6d;
 }
 
 .erro {
-    color:red;
+    color:#ff4d6d;
     text-align:center;
+    font-size: 14px;
+    margin-top: 15px;
 }
 </style>
 </head>
@@ -60,8 +68,8 @@ button:hover {
 <div class="login-box">
     <h2>AutoGest</h2>
 
-    <input type="text" id="username" placeholder="Email">
-    <input type="password" id="password" placeholder="Senha">
+    <input type="email" id="username" placeholder="E-mail (admin@admin.com)">
+    <input type="password" id="password" placeholder="Senha (admin123)">
 
     <button id="btnLogin">Entrar</button>
 
@@ -69,34 +77,46 @@ button:hover {
 </div>
 
 <script>
+// URL oficial do seu backend no Render
+const API_URL = "https://autogest-backend-ikmb.onrender.com";
+
 document.getElementById("btnLogin").addEventListener("click", async function() {
     const username = document.getElementById("username").value;
     const password = document.getElementById("password").value;
+    const erroElemento = document.getElementById("erro");
+
+    if (!username || !password) {
+        erroElemento.innerText = "Preencha todos os campos.";
+        return;
+    }
+
+    erroElemento.innerText = "Conectando...";
 
     try {
-        const response = await fetch("http://127.0.0.1:8000/login", {
+        // AJUSTE AQUI: Removido o "/auth" para bater com o seu main.py
+        const response = await fetch(`${API_URL}/login`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                email: username,  // Ajustado para o backend
-                senha: password   // Ajustado para o backend
+                email: username,
+                senha: password
             })
         });
 
+        const data = await response.json();
+
         if (response.ok) {
-            const data = await response.json();
             localStorage.setItem("token", data.access_token);
-            alert("Login realizado com sucesso!");
             window.location.href = "dashboard.html";
         } else {
-            // Agora o backend vai reconhecer e não dará mais erro 400
-            document.getElementById("erro").innerText = "Usuário ou senha inválidos";
+            // Exibe a mensagem de erro vinda do backend (ex: "E-mail ou senha incorretos")
+            erroElemento.innerText = data.detail || "Usuário ou senha inválidos";
         }
     } catch (error) {
-        document.getElementById("erro").innerText = "Erro ao conectar com o servidor";
-        console.error(error);
+        erroElemento.innerText = "Erro ao conectar com o servidor.";
+        console.error("Erro de conexão:", error);
     }
 });
 </script>
