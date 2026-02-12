@@ -2,102 +2,115 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Dashboard - AutoGest</title>
+    <title>AutoGest - Sistema de Estoque</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <div class="sidebar">
     <h2>AutoGest</h2>
-    <p onclick="location.reload()">🔄 Dashboard</p>
-    <p onclick="abrirModal()">🚗 Veículos</p>
-    <p>📄 RENAVE</p>
-    <p onclick="logout()" style="color: #ff4d6d; margin-top: 30px; font-weight: bold;">🚪 Sair</p>
+    <p onclick="location.reload()">📊 Dashboard</p>
+    <p onclick="abrirModal()">➕ Novo Veículo</p>
+    <p onclick="logout()" style="color: #ff4d6d; margin-top: 50px;">🚪 Sair</p>
 </div>
 
 <div class="content">
-    <h1>Bem-vindo ao AutoGest</h1>
+    <h1>Gestão de Estoque</h1>
+
     <div id="cards-container" class="dashboard-grid">
-        <div class="loading">Sincronizando com o servidor...</div>
+        </div>
+
+    <div class="stock-container">
+        <h2>🚗 Veículos em Estoque</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Marca/Modelo</th>
+                    <th>Placa</th>
+                    <th>Valor</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="lista-estoque">
+                </tbody>
+        </table>
     </div>
 </div>
 
 <div id="modalVeiculo" class="modal">
     <div class="modal-content">
-        <h2>Novo Veículo</h2>
-        <form id="formCadastro">
+        <h2>Cadastrar Veículo</h2>
+        <form id="formVeiculo">
             <input type="text" id="marca" placeholder="Marca" required>
             <input type="text" id="modelo" placeholder="Modelo" required>
             <input type="text" id="placa" placeholder="Placa" required>
-            <input type="number" id="valor" placeholder="Valor (R$)" step="0.01" required>
-            <button type="submit" class="btn-save">Cadastrar</button>
-            <div class="btn-cancel" onclick="fecharModal()">Cancelar</div>
+            <input type="number" id="valor" placeholder="Preço de Venda" required>
+            <button type="submit" class="btn-save" style="width:100%; background:#e94560; color:white; padding:12px; border:none; border-radius:5px; cursor:pointer;">Salvar no Estoque</button>
+            <p onclick="fecharModal()" style="text-align:center; cursor:pointer; color:#aaa;">Cancelar</p>
         </form>
     </div>
 </div>
 
 <script>
     const API_URL = "https://autogest-backend-ikmb.onrender.com";
+    const token = localStorage.getItem("token");
 
-    async function carregarDados() {
-        const token = localStorage.getItem("token");
-        if (!token) { window.location.href = "login.html"; return; }
+    if (!token) window.location.href = "login.html";
 
+    async function atualizarTela() {
         try {
-            const res = await fetch(`${API_URL}/dashboard`, {
-                headers: { "Authorization": `Bearer ${token}` }
-            });
-            const data = await res.json();
-
+            // Cards
+            const resD = await fetch(`${API_URL}/dashboard`, { headers: { "Authorization": `Bearer ${token}` } });
+            const d = await resD.json();
             document.getElementById("cards-container").innerHTML = `
-                <div class="card"><h3>${data.total_veiculos || 0}</h3><p>Total</p></div>
-                <div class="card"><h3>${data.em_estoque || 0}</h3><p>Em Estoque</p></div>
-                <div class="card"><h3>${data.vendidos || 0}</h3><p>Vendidos</p></div>
-                <div class="card"><h3>R$ ${(data.valor_total || 0).toLocaleString('pt-BR')}</h3><p>Patrimônio</p></div>
+                <div class="card"><h3>${d.total_veiculos || 0}</h3><p>Total</p></div>
+                <div class="card"><h3>R$ ${(d.valor_total || 0).toLocaleString('pt-BR')}</h3><p>Patrimônio</p></div>
             `;
-        } catch (e) {
-            document.getElementById("cards-container").innerHTML = "Erro ao carregar.";
-        }
+
+            // Tabela
+            const resV = await fetch(`${API_URL}/veiculos`, { headers: { "Authorization": `Bearer ${token}` } });
+            const veiculos = await resV.json();
+            document.getElementById("lista-estoque").innerHTML = veiculos.map(v => `
+                <tr>
+                    <td><strong>${v.marca}</strong> ${v.modelo}</td>
+                    <td>${v.placa}</td>
+                    <td>R$ ${v.valor.toLocaleString('pt-BR')}</td>
+                    <td><button class="btn-delete" onclick="excluir(${v.id})">🗑️ Remover</button></td>
+                </tr>
+            `).join("");
+        } catch (e) { console.error(e); }
     }
 
-    // Controle do Modal
-    function abrirModal() { document.getElementById("modalVeiculo").style.display = "flex"; }
-    function fecharModal() { document.getElementById("modalVeiculo").style.display = "none"; }
+    async function excluir(id) {
+        if (!confirm("Excluir este veículo?")) return;
+        const res = await fetch(`${API_URL}/veiculos/${id}`, {
+            method: "DELETE",
+            headers: { "Authorization": `Bearer ${token}` }
+        });
+        if (res.ok) atualizarTela();
+    }
 
-    // Envio do Cadastro
-    document.getElementById("formCadastro").onsubmit = async (e) => {
+    document.getElementById("formVeiculo").onsubmit = async (e) => {
         e.preventDefault();
-        const token = localStorage.getItem("token");
         const body = {
             marca: document.getElementById("marca").value,
             modelo: document.getElementById("modelo").value,
             placa: document.getElementById("placa").value,
             valor: parseFloat(document.getElementById("valor").value)
         };
-
         const res = await fetch(`${API_URL}/veiculos`, {
             method: "POST",
-            headers: {
-                "Authorization": `Bearer ${token}`,
-                "Content-Type": "application/json"
-            },
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
             body: JSON.stringify(body)
         });
-
-        if (res.ok) {
-            alert("Sucesso!");
-            fecharModal();
-            carregarDados();
-        }
+        if (res.ok) { fecharModal(); atualizarTela(); document.getElementById("formVeiculo").reset(); }
     };
 
-    function logout() {
-        localStorage.removeItem("token");
-        window.location.href = "login.html";
-    }
+    function abrirModal() { document.getElementById("modalVeiculo").style.display = "flex"; }
+    function fecharModal() { document.getElementById("modalVeiculo").style.display = "none"; }
+    function logout() { localStorage.removeItem("token"); window.location.href = "login.html"; }
 
-    carregarDados();
+    atualizarTela();
 </script>
-
 </body>
 </html>
