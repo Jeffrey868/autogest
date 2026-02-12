@@ -2,7 +2,8 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>AutoGest - Sistema de Estoque</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoGest - Gestão de Estoque</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,14 +12,15 @@
     <h2>AutoGest</h2>
     <p onclick="location.reload()">📊 Dashboard</p>
     <p onclick="abrirModal()">➕ Novo Veículo</p>
-    <p onclick="logout()" style="color: #ff4d6d; margin-top: 50px;">🚪 Sair</p>
+    <p onclick="logout()" style="color: #ff4d6d; margin-top: 50px; font-weight: bold;">🚪 Sair</p>
 </div>
 
 <div class="content">
     <h1>Gestão de Estoque</h1>
 
     <div id="cards-container" class="dashboard-grid">
-        </div>
+        <div class="loading">Sincronizando dados...</div>
+    </div>
 
     <div class="stock-container">
         <h2>🚗 Veículos em Estoque</h2>
@@ -41,12 +43,12 @@
     <div class="modal-content">
         <h2>Cadastrar Veículo</h2>
         <form id="formVeiculo">
-            <input type="text" id="marca" placeholder="Marca" required>
-            <input type="text" id="modelo" placeholder="Modelo" required>
+            <input type="text" id="marca" placeholder="Marca (ex: Toyota)" required>
+            <input type="text" id="modelo" placeholder="Modelo (ex: Corolla)" required>
             <input type="text" id="placa" placeholder="Placa" required>
-            <input type="number" id="valor" placeholder="Preço de Venda" required>
-            <button type="submit" class="btn-save" style="width:100%; background:#e94560; color:white; padding:12px; border:none; border-radius:5px; cursor:pointer;">Salvar no Estoque</button>
-            <p onclick="fecharModal()" style="text-align:center; cursor:pointer; color:#aaa;">Cancelar</p>
+            <input type="number" id="valor" placeholder="Preço de Venda (R$)" step="0.01" required>
+            <button type="submit" class="btn-save" style="width:100%; background:#e94560; color:white; padding:12px; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">Salvar no Estoque</button>
+            <p onclick="fecharModal()" style="text-align:center; cursor:pointer; color:#aaa; margin-top:15px;">Cancelar</p>
         </form>
     </div>
 </div>
@@ -55,62 +57,114 @@
     const API_URL = "https://autogest-backend-ikmb.onrender.com";
     const token = localStorage.getItem("token");
 
-    if (!token) window.location.href = "login.html";
+    // Redireciona se não houver login
+    if (!token) {
+        window.location.href = "login.html";
+    }
 
-    async function atualizarTela() {
+    // Função principal para carregar dados e atualizar a interface
+    async function carregarTudo() {
         try {
-            // Cards
-            const resD = await fetch(`${API_URL}/dashboard`, { headers: { "Authorization": `Bearer ${token}` } });
-            const d = await resD.json();
+            // 1. Atualiza os Cards (Patrimônio e Total)
+            const resDash = await fetch(`${API_URL}/dashboard`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            const d = await resDash.json();
+
             document.getElementById("cards-container").innerHTML = `
-                <div class="card"><h3>${d.total_veiculos || 0}</h3><p>Total</p></div>
-                <div class="card"><h3>R$ ${(d.valor_total || 0).toLocaleString('pt-BR')}</h3><p>Patrimônio</p></div>
+                <div class="card">
+                    <h3>${d.total_veiculos || 0}</h3>
+                    <p>Total Veículos</p>
+                </div>
+                <div class="card">
+                    <h3>R$ ${(d.valor_total || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</h3>
+                    <p>Patrimônio</p>
+                </div>
             `;
 
-            // Tabela
-            const resV = await fetch(`${API_URL}/veiculos`, { headers: { "Authorization": `Bearer ${token}` } });
-            const veiculos = await resV.json();
-            document.getElementById("lista-estoque").innerHTML = veiculos.map(v => `
+            // 2. Atualiza a Tabela de Estoque
+            const resVeic = await fetch(`${API_URL}/veiculos`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            const veiculos = await resVeic.json();
+
+            const tabela = document.getElementById("lista-estoque");
+            tabela.innerHTML = veiculos.map(v => `
                 <tr>
                     <td><strong>${v.marca}</strong> ${v.modelo}</td>
                     <td>${v.placa}</td>
-                    <td>R$ ${v.valor.toLocaleString('pt-BR')}</td>
-                    <td><button class="btn-delete" onclick="excluir(${v.id})">🗑️ Remover</button></td>
+                    <td>R$ ${v.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+                    <td>
+                        <button class="btn-delete" onclick="excluirVeiculo(${v.id})" style="background:#e94560; color:white; border:none; padding:8px 12px; border-radius:5px; cursor:pointer;">🗑️ Remover</button>
+                    </td>
                 </tr>
             `).join("");
-        } catch (e) { console.error(e); }
+
+        } catch (error) {
+            console.error("Erro ao carregar dados:", error);
+        }
     }
 
-    async function excluir(id) {
-        if (!confirm("Excluir este veículo?")) return;
-        const res = await fetch(`${API_URL}/veiculos/${id}`, {
-            method: "DELETE",
-            headers: { "Authorization": `Bearer ${token}` }
-        });
-        if (res.ok) atualizarTela();
+    // Função para Excluir Veículo
+    async function excluirVeiculo(id) {
+        if (!confirm("Deseja realmente remover este veículo? Esta ação atualizará o patrimônio imediatamente.")) return;
+
+        try {
+            const res = await fetch(`${API_URL}/veiculos/${id}`, {
+                method: "DELETE",
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+
+            if (res.ok) {
+                // RECARREGA TUDO APÓS EXCLUIR
+                await carregarTudo();
+            } else {
+                alert("Erro ao excluir o veículo do servidor.");
+            }
+        } catch (err) {
+            alert("Erro de conexão.");
+        }
     }
 
+    // Envio do formulário de cadastro
     document.getElementById("formVeiculo").onsubmit = async (e) => {
         e.preventDefault();
-        const body = {
+
+        const dados = {
             marca: document.getElementById("marca").value,
             modelo: document.getElementById("modelo").value,
             placa: document.getElementById("placa").value,
             valor: parseFloat(document.getElementById("valor").value)
         };
+
         const res = await fetch(`${API_URL}/veiculos`, {
             method: "POST",
-            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-            body: JSON.stringify(body)
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify(dados)
         });
-        if (res.ok) { fecharModal(); atualizarTela(); document.getElementById("formVeiculo").reset(); }
+
+        if (res.ok) {
+            fecharModal();
+            document.getElementById("formVeiculo").reset();
+            await carregarTudo(); // Recarrega para somar o novo valor
+        }
     };
 
+    // Funções de Interface
     function abrirModal() { document.getElementById("modalVeiculo").style.display = "flex"; }
     function fecharModal() { document.getElementById("modalVeiculo").style.display = "none"; }
-    function logout() { localStorage.removeItem("token"); window.location.href = "login.html"; }
 
-    atualizarTela();
+    function logout() {
+        localStorage.removeItem("token");
+        window.location.href = "login.html";
+    }
+
+    // Inicialização
+    carregarTudo();
 </script>
+
 </body>
 </html>
