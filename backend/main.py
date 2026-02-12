@@ -9,7 +9,8 @@ import os
 
 from database import Base, engine, SessionLocal
 from models import Usuario, Veiculo
-from auth import hash_senha, verificar_senha, criar_token, decodificar_token
+# Importamos o pwd_context para garantir o hash correto na rota de emergência
+from auth import verificar_senha, criar_token, decodificar_token, pwd_context
 
 # ----------------------------
 # CONFIGURAÇÃO DE SEGURANÇA
@@ -29,12 +30,14 @@ app.add_middleware(
 # Garante que as tabelas existam
 Base.metadata.create_all(bind=engine)
 
+
 def get_db():
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
+
 
 def get_usuario_logado(token: str = Depends(oauth2_scheme)):
     email = decodificar_token(token)
@@ -46,41 +49,49 @@ def get_usuario_logado(token: str = Depends(oauth2_scheme)):
         )
     return email
 
+
 # ----------------------------
-# ROTA DE EMERGÊNCIA: SETUP ADMIN
+# ROTA DE EMERGÊNCIA: SETUP ADMIN (VERSÃO FINAL)
 # ----------------------------
 @app.get("/setup-admin")
 def setup_admin(db: Session = Depends(get_db)):
-    """Rota manual para criar o admin e evitar o erro de startup do Render."""
+    """Cria o admin forçando o hash direto para evitar erro de 72 bytes."""
     try:
         admin = db.query(Usuario).filter(Usuario.email == "admin@admin.com").first()
         if not admin:
-            # Criando o usuário com senha simples
+            # Forçamos a senha admin123 para string limpa
+            senha_plana = str("admin123")
+            # Geramos o hash diretamente aqui para depuração
+            hash_seguro = pwd_context.hash(senha_plana)
+
             novo_admin = Usuario(
                 email="admin@admin.com",
-                senha=hash_senha("admin123")
+                senha=hash_seguro
             )
             db.add(novo_admin)
             db.commit()
-            return {"status": "sucesso", "msg": "Usuário admin criado com admin123!"}
-        return {"status": "info", "msg": "O admin já existe no banco de dados."}
+            return {"status": "sucesso", "msg": "Admin criado com admin123!"}
+        return {"status": "info", "msg": "O admin já existe."}
     except Exception as e:
         db.rollback()
+        # Captura o erro exato para o log do navegador
         return {"status": "erro", "detalhes": str(e)}
 
+
 # ----------------------------
-# LOGIN (Rota: /login)
+# LOGIN
 # ----------------------------
 @app.post("/login")
 def login(dados: dict, db: Session = Depends(get_db)):
     usuario = db.query(Usuario).filter(Usuario.email == dados.get("email")).first()
 
     if not usuario or not verificar_senha(dados.get("senha"), usuario.senha):
-        # Retorna 400 se o usuário não for encontrado ou senha errada
+        # Falha se o usuário não existir (que era o que acontecia antes)
         raise HTTPException(status_code=400, detail="E-mail ou senha incorretos")
 
     token = criar_token(usuario.email)
     return {"access_token": token, "token_type": "bearer"}
+
 
 # ----------------------------
 # DASHBOARD E VEÍCULOS
@@ -94,9 +105,11 @@ def dashboard(db: Session = Depends(get_db), usuario: str = Depends(get_usuario_
     valor_total = sum(v.valor for v in veiculos) if veiculos else 0
     return {"total_veiculos": total, "em_estoque": estoque, "vendidos": vendidos, "valor_total": valor_total}
 
+
 @app.get("/veiculos")
 def listar_veiculos(db: Session = Depends(get_db), usuario: str = Depends(get_usuario_logado)):
     return db.query(Veiculo).all()
+
 
 @app.post("/veiculos")
 def criar_veiculo(dados: dict, db: Session = Depends(get_db), usuario: str = Depends(get_usuario_logado)):
@@ -108,6 +121,7 @@ def criar_veiculo(dados: dict, db: Session = Depends(get_db), usuario: str = Dep
     db.commit()
     db.refresh(novo)
     return novo
+
 
 @app.get("/")
 def root():
