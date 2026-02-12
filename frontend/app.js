@@ -1,49 +1,67 @@
-// 1. Substituímos o localhost pelo link oficial do seu Render
-const API = "https://autogest-backend-ikmb.onrender.com";
+const API_URL = "https://autogest-backend-ikmb.onrender.com";
+const token = localStorage.getItem("token");
 
-async function login() {
-    const email = document.getElementById("email").value;
-    const senha = document.getElementById("senha").value;
+// Se não tiver token, volta para o login
+if (!token && !window.location.href.includes("login.html")) {
+    window.location.href = "login.html";
+}
 
-    try {
-        const res = await fetch(`${API}/auth/login`, {
+// --- LÓGICA DA PÁGINA DE VEÍCULOS ---
+if (window.location.href.includes("veiculos.html")) {
+    const modal = document.getElementById("modalVeiculo");
+    
+    // Abrir/Fechar Modal
+    document.getElementById("btnNovoVeiculo").onclick = () => modal.style.display = "flex";
+    document.getElementById("btnCancelar").onclick = () => modal.style.display = "none";
+
+    // Listar Veículos
+    async function carregarVeiculos() {
+        const res = await fetch(`${API_URL}/veiculos`, {
+            headers: { "Authorization": `Bearer ${token}` }
+        });
+        const veiculos = await res.json();
+        const lista = document.getElementById("listaVeiculos");
+        lista.innerHTML = veiculos.map(v => `
+            <tr>
+                <td>${v.marca}</td>
+                <td>${v.modelo}</td>
+                <td>${v.placa}</td>
+                <td>R$ ${v.valor.toLocaleString()}</td>
+                <td><span class="badge">${v.status}</span></td>
+            </tr>
+        `).join("");
+    }
+
+    // Salvar Novo Veículo
+    document.getElementById("formVeiculo").onsubmit = async (e) => {
+        e.preventDefault();
+        const dados = {
+            marca: document.getElementById("marca").value,
+            modelo: document.getElementById("modelo").value,
+            placa: document.getElementById("placa").value,
+            valor: parseFloat(document.getElementById("valor").value)
+        };
+
+        const res = await fetch(`${API_URL}/veiculos`, {
             method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({email, senha})
+            headers: { 
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}` 
+            },
+            body: JSON.stringify(dados)
         });
 
-        if (!res.ok) throw new Error("Usuário ou senha inválidos");
-
-        const data = await res.json();
-        // Guardamos o token para usar nas próximas chamadas
-        localStorage.setItem("token", data.access_token);
-        window.location = "dashboard.html";
-    } catch (error) {
-        alert(error.message);
-    }
-}
-
-async function carregarDashboard() {
-    const token = localStorage.getItem("token"); // Pegamos o token salvo
-
-    const res = await fetch(`${API}/dashboard/`, {
-        method: "GET",
-        headers: {
-            "Authorization": `Bearer ${token}`, // Enviamos o token para o backend liberar o acesso
-            "Content-Type": "application/json"
+        if (res.ok) {
+            modal.style.display = "none";
+            carregarVeiculos(); // Recarrega a lista
         }
-    });
+    };
 
-    if (res.status === 401) {
-        window.location = "login.html"; // Se o token for inválido, volta para o login
-        return;
-    }
-
-    const data = await res.json();
-
-    document.getElementById("dados").innerHTML = `
-        Total: ${data.total_veiculos}<br>
-        Em Estoque: ${data.em_estoque}<br>
-        Vendidos: ${data.vendidos}
-    `;
+    carregarVeiculos();
 }
+
+// Botão Sair
+document.getElementById("btnLogout")?.addEventListener("click", () => {
+    localStorage.removeItem("token");
+    window.location.href = "login.html";
+});

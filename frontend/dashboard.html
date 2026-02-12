@@ -1,127 +1,102 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-br">
 <head>
-<title>Dashboard - AutoGest</title>
-<style>
-body {
-    margin:0;
-    background:#1a1a2e;
-    font-family:Arial;
-    color:white;
-}
-.sidebar {
-    width:220px;
-    height:100vh;
-    background:#16213e;
-    position:fixed;
-    padding:20px;
-}
-.sidebar h2 { color:#e94560; }
-.sidebar p { cursor: pointer; padding: 10px 0; border-bottom: 1px solid #0f3460; }
-.sidebar p:hover { color: #e94560; }
-
-.main {
-    margin-left:260px;
-    padding:40px;
-}
-
-.card {
-    background:#0f3460;
-    padding:20px;
-    border-radius:10px;
-    width:200px;
-    display:inline-block;
-    margin:15px;
-    text-align:center;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-}
-
-.card h3 { margin:0; font-size:24px; color: #e94560; }
-.card p { margin:10px 0 0; color: #ccc; }
-
-.loading { text-align: center; font-size: 20px; margin-top: 50px; }
-</style>
+    <meta charset="UTF-8">
+    <title>Dashboard - AutoGest</title>
+    <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
 <div class="sidebar">
     <h2>AutoGest</h2>
     <p onclick="location.reload()">🔄 Dashboard</p>
-    <p>🚗 Veículos</p>
+    <p onclick="abrirModal()">🚗 Veículos</p>
     <p>📄 RENAVE</p>
-    <p onclick="logout()" style="color: #ff4d6d; margin-top: 20px;">🚪 Sair</p>
+    <p onclick="logout()" style="color: #ff4d6d; margin-top: 30px; font-weight: bold;">🚪 Sair</p>
 </div>
 
-<div class="main">
-    <h1>Dashboard</h1>
-    <div id="cards" class="loading">Carregando dados do servidor...</div>
+<div class="content">
+    <h1>Bem-vindo ao AutoGest</h1>
+    <div id="cards-container" class="dashboard-grid">
+        <div class="loading">Sincronizando com o servidor...</div>
+    </div>
+</div>
+
+<div id="modalVeiculo" class="modal">
+    <div class="modal-content">
+        <h2>Novo Veículo</h2>
+        <form id="formCadastro">
+            <input type="text" id="marca" placeholder="Marca" required>
+            <input type="text" id="modelo" placeholder="Modelo" required>
+            <input type="text" id="placa" placeholder="Placa" required>
+            <input type="number" id="valor" placeholder="Valor (R$)" step="0.01" required>
+            <button type="submit" class="btn-save">Cadastrar</button>
+            <div class="btn-cancel" onclick="fecharModal()">Cancelar</div>
+        </form>
+    </div>
 </div>
 
 <script>
-// URL oficial do seu backend no Render
-const API_URL = "https://autogest-backend-ikmb.onrender.com";
+    const API_URL = "https://autogest-backend-ikmb.onrender.com";
 
-async function carregarDashboard(){
-    const token = localStorage.getItem("token"); // Busca o token salvo no login
+    async function carregarDados() {
+        const token = localStorage.getItem("token");
+        if (!token) { window.location.href = "login.html"; return; }
 
-    // Se não houver token, redireciona para o login por segurança
-    if (!token) {
-        window.location.href = "login.html";
-        return;
+        try {
+            const res = await fetch(`${API_URL}/dashboard`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            const data = await res.json();
+
+            document.getElementById("cards-container").innerHTML = `
+                <div class="card"><h3>${data.total_veiculos || 0}</h3><p>Total</p></div>
+                <div class="card"><h3>${data.em_estoque || 0}</h3><p>Em Estoque</p></div>
+                <div class="card"><h3>${data.vendidos || 0}</h3><p>Vendidos</p></div>
+                <div class="card"><h3>R$ ${(data.valor_total || 0).toLocaleString('pt-BR')}</h3><p>Patrimônio</p></div>
+            `;
+        } catch (e) {
+            document.getElementById("cards-container").innerHTML = "Erro ao carregar.";
+        }
     }
 
-    try {
-        const res = await fetch(`${API_URL}/dashboard`, {
-            method: "GET",
+    // Controle do Modal
+    function abrirModal() { document.getElementById("modalVeiculo").style.display = "flex"; }
+    function fecharModal() { document.getElementById("modalVeiculo").style.display = "none"; }
+
+    // Envio do Cadastro
+    document.getElementById("formCadastro").onsubmit = async (e) => {
+        e.preventDefault();
+        const token = localStorage.getItem("token");
+        const body = {
+            marca: document.getElementById("marca").value,
+            modelo: document.getElementById("modelo").value,
+            placa: document.getElementById("placa").value,
+            valor: parseFloat(document.getElementById("valor").value)
+        };
+
+        const res = await fetch(`${API_URL}/veiculos`, {
+            method: "POST",
             headers: {
-                "Authorization": `Bearer ${token}`, // Envia a credencial para o Render liberar os dados
+                "Authorization": `Bearer ${token}`,
                 "Content-Type": "application/json"
-            }
+            },
+            body: JSON.stringify(body)
         });
 
-        if (res.status === 401) {
-            alert("Sessão expirada. Faça login novamente.");
-            logout();
-            return;
+        if (res.ok) {
+            alert("Sucesso!");
+            fecharModal();
+            carregarDados();
         }
+    };
 
-        const data = await res.json();
-
-        document.getElementById("cards").innerHTML = `
-            <div class="card">
-                <h3>${data.total_veiculos || 0}</h3>
-                <p>Total Veículos</p>
-            </div>
-
-            <div class="card">
-                <h3>${data.em_estoque || 0}</h3>
-                <p>Em Estoque</p>
-            </div>
-
-            <div class="card">
-                <h3>${data.vendidos || 0}</h3>
-                <p>Vendidos</p>
-            </div>
-
-            <div class="card">
-                <h3>R$ ${(data.valor_total || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</h3>
-                <p>Valor Total</p>
-            </div>
-        `;
-    } catch (error) {
-        document.getElementById("cards").innerHTML = "<p style='color:red'>Erro ao conectar com o servidor.</p>";
-        console.error("Erro no fetch:", error);
+    function logout() {
+        localStorage.removeItem("token");
+        window.location.href = "login.html";
     }
-}
 
-function logout() {
-    localStorage.removeItem("token");
-    window.location.href = "login.html";
-}
-
-// Inicia a carga dos dados assim que a página abre
-carregarDashboard();
+    carregarDados();
 </script>
 
 </body>

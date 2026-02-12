@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoGest - Veículos</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <aside class="sidebar">
+            <h2 class="logo">AutoGest</h2>
+            <nav>
+                <a href="dashboard.html">📊 Dashboard</a>
+                <a href="veiculos.html" class="active">🚗 Veículos</a>
+                <a href="#">📄 RENAVE</a>
+                <a href="#" id="btnLogout">🚪 Sair</a>
+            </nav>
+        </aside>
+
+        <main class="content">
+            <header>
+                <h1>Gestão de Veículos</h1>
+                <button id="btnNovoVeiculo" class="btn-primary">+ Novo Veículo</button>
+            </header>
+
+            <section class="card">
+                <table id="tabelaVeiculos">
+                    <thead>
+                        <tr>
+                            <th>Marca</th>
+                            <th>Modelo</th>
+                            <th>Placa</th>
+                            <th>Valor</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="listaVeiculos">
+                        </tbody>
+                </table>
+            </section>
+        </main>
+    </div>
+
+    <div id="modalVeiculo" class="modal">
+        <div class="modal-content">
+            <h3>Cadastrar Veículo</h3>
+            <form id="formVeiculo">
+                <input type="text" id="marca" placeholder="Marca" required>
+                <input type="text" id="modelo" placeholder="Modelo" required>
+                <input type="text" id="placa" placeholder="Placa" required>
+                <input type="number" id="valor" placeholder="Valor (R$)" required>
+                <div class="modal-buttons">
+                    <button type="button" id="btnCancelar">Cancelar</button>
+                    <button type="submit" class="btn-success">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
