@@ -1,16 +1,14 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from datetime import datetime
-import random
 import os
 
 from database import Base, engine, SessionLocal
 from models import Usuario, Veiculo
-# Importamos o pwd_context para garantir o hash direto e evitar falhas de biblioteca
-from auth import verificar_senha, criar_token, decodificar_token, pwd_context
+# Agora importamos hash_senha diretamente, pois o auth.py já resolveu o problema do bcrypt
+from auth import hash_senha, verificar_senha, criar_token, decodificar_token
 
 # ----------------------------
 # CONFIGURAÇÃO DE SEGURANÇA
@@ -51,33 +49,38 @@ def get_usuario_logado(token: str = Depends(oauth2_scheme)):
 
 
 # ----------------------------
-# ROTA DE EMERGÊNCIA: SETUP ADMIN
+# ROTA DE EMERGÊNCIA: SETUP ADMIN (CORRIGIDA)
 # ----------------------------
 @app.get("/setup-admin")
 def setup_admin(db: Session = Depends(get_db)):
-    """Cria o admin forçando o hash direto para ignorar erros de encoding."""
+    """
+    Cria ou reseta o admin usando o novo algoritmo PBKDF2.
+    Isso conserta logins quebrados pelo erro anterior do bcrypt.
+    """
     try:
-        # Busca se já existe para não duplicar
-        admin = db.query(Usuario).filter(Usuario.email == "admin@admin.com").first()
+        email_admin = "admin@admin.com"
+        senha_padrao = "admin123"
+
+        # Gera o hash usando a nova função segura do auth.py
+        senha_criptografada = hash_senha(senha_padrao)
+
+        admin = db.query(Usuario).filter(Usuario.email == email_admin).first()
 
         if not admin:
-            # Forçamos a senha admin123 de forma ultra-limpa
-            senha_texto = "admin123"
-            hash_gerado = pwd_context.hash(senha_texto)
-
-            novo_admin = Usuario(
-                email="admin@admin.com",
-                senha=hash_gerado
-            )
+            # Cria novo se não existir
+            novo_admin = Usuario(email=email_admin, senha=senha_criptografada)
             db.add(novo_admin)
-            db.commit()
-            return {"status": "sucesso", "msg": "Usuário admin criado com sucesso!"}
+            msg = "Admin criado com sucesso (PBKDF2)!"
+        else:
+            # ATUALIZA a senha se já existir (para corrigir hash antigo quebrado)
+            admin.senha = senha_criptografada
+            msg = "Senha do Admin resetada para 'admin123' com nova criptografia!"
 
-        return {"status": "info", "msg": "O admin já existe no banco."}
+        db.commit()
+        return {"status": "sucesso", "msg": msg}
 
     except Exception as e:
         db.rollback()
-        # Retorna o erro exato para o navegador se algo der errado
         return {"status": "erro", "detalhes": str(e)}
 
 
@@ -88,8 +91,8 @@ def setup_admin(db: Session = Depends(get_db)):
 def login(dados: dict, db: Session = Depends(get_db)):
     usuario = db.query(Usuario).filter(Usuario.email == dados.get("email")).first()
 
+    # verificar_senha agora usa o auth.py compatível
     if not usuario or not verificar_senha(dados.get("senha"), usuario.senha):
-        # Falha se o usuário não for encontrado (que é o que acontece sem o setup-admin)
         raise HTTPException(status_code=400, detail="E-mail ou senha incorretos")
 
     token = criar_token(usuario.email)
@@ -117,11 +120,8 @@ def listar_veiculos(db: Session = Depends(get_db), usuario: str = Depends(get_us
 @app.post("/veiculos")
 def criar_veiculo(dados: dict, db: Session = Depends(get_db), usuario: str = Depends(get_usuario_logado)):
     novo = Veiculo(
-        marca=dados.get("marca"),
-        modelo=dados.get("modelo"),
-        placa=dados.get("placa"),
-        valor=dados.get("valor"),
-        status="EM_ESTOQUE"
+        marca=dados.get("marca"), modelo=dados.get("modelo"),
+        placa=dados.get("placa"), valor=dados.get("valor"), status="EM_ESTOQUE"
     )
     db.add(novo)
     db.commit()
