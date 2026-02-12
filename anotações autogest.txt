@@ -1,0 +1,179 @@
+📁 ESTRUTURA FINAL
+autogest/
+│
+├── backend/
+│   ├── main.py
+│   ├── database.py
+│   ├── models.py
+│   ├── schemas.py
+│   ├── auth.py
+│   ├── renave.py
+│   ├── requirements.txt
+│   │
+│   └── routes/
+│       ├── auth_routes.py
+│       ├── veiculo_routes.py
+│       ├── dashboard_routes.py
+│       └── renave_routes.py
+│
+└── frontend/
+    ├── login.html
+    ├── dashboard.html
+    ├── app.js
+    └── style.css
+-----------------------------------------
+📄 5️⃣ requirements.txt
+
+# Web Server & Framework
+fastapi
+uvicorn[standard]
+gunicorn
+
+# Banco de Dados
+sqlalchemy
+psycopg2-binary
+
+# Segurança e Autenticação
+python-jose[cryptography]
+passlib[bcrypt]
+bcrypt
+
+# Utilitários
+reportlab
+python-multipart
+
+Instalar:
+
+pip install -r requirements.txt
+----------------------------------------
+
+EMISSÃO PDF RENAVE REAL
+
+Instale:
+
+pip install reportlab
+
+----------------------------------------
+
+🔐 LOGIN PADRÃO
+
+Email:
+
+admin@admin.com
+
+
+Senha:
+
+admin123
+
+----------------------------------------
+
+🚀 COMO RODAR
+
+Dentro da pasta backend:
+
+python -m uvicorn main:app --reload
+
+
+Abrir:
+
+http://127.0.0.1:8000/docs
+
+----------------------------------------
+☁ PREPARADO PARA NUVEM
+Para subir:
+
+1️⃣ Criar conta no Render.com
+2️⃣ Conectar GitHub
+3️⃣ Subir repositório
+4️⃣ Criar Web Service
+5️⃣ Definir:
+----------------------------------------
+Dentro da pasta backend: (clicar segurando shift com botão direito e abrir com terminal)
+
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn main:app --reload
+----------------------------------------------
+
+🚀 COMO EXECUTAR
+
+Dentro da pasta backend:
+
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn main:app --reload
+
+
+Depois:
+
+Abra frontend/login.html
+---------------------------------------------
+
+✅ Projeto organizado
+✅ Commitado
+✅ Versionado
+✅ No GitHub
+✅ Profissional
+
+---------------------------------------------
+🔥 Próximo nível agora:
+
+Você quer ir para qual etapa?
+
+1️⃣ ☁ Colocar o backend na nuvem (Render)
+2️⃣ 🌐 Colocar frontend online (Vercel)
+3️⃣ 🔐 Melhorar segurança (JWT + proteção de rotas)
+4️⃣ 🧾 Melhorar módulo RENAVE com PDF real oficial
+5️⃣ 🗄 Migrar SQLite para PostgreSQL (padrão produção)
+6️⃣ 💼 Deixar 100% pronto para vender
+
+Me fala o número que você quer agora 👇
+Vamos transformar esse AutoGest em produto real.
+--------------------------------------------------
+
+SE DER ERRO NA EXEC
+
+1. Autorizar o PowerShell
+O Windows bloqueia scripts por segurança. Para liberar o uso do seu ambiente virtual, abra o PowerShell como Administrador e execute:
+
+PowerShell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+Escolha [S] Sim quando ele perguntar. Isso permite que scripts locais (como o seu activate.ps1) rodem sem problemas.
+
+2. Ativar e Rodar
+Agora, feche e abra novamente o terminal no seu VS Code (ou na pasta do projeto) e siga esta ordem:
+
+Ative o ambiente:
+
+PowerShell
+.\venv\Scripts\activate
+(Observe se aparece um (venv) verde antes do caminho da pasta no terminal).
+
+Rode o servidor:
+
+PowerShell
+uvicorn main:app --reload
+Por que isso acontece?
+Imagine que o seu computador é uma oficina. O uvicorn é uma ferramenta que está guardada dentro de uma caixa específica chamada venv. Se você não "abre a caixa" (ativa o venv), o computador tenta procurar a ferramenta na bancada principal e não encontra nada.
+
+Se ainda assim não funcionar...
+Pode ser que o uvicorn não tenha sido instalado dentro desse ambiente. Com o (venv) ativado, tente:
+
+PowerShell
+pip install uvicorn fastapi
+--------------------------------------------------
+
+Rodar servidor local
+
+Entre na pasta onde está seu HTML:
+
+cd caminho/da/pasta/frontend
+
+
+Depois rode:
+
+python -m http.server 5500
+--------------------------------------------------

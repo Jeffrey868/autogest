@@ -1,26 +1,87 @@
 <!DOCTYPE html>
 <html>
 <head>
-<link rel="stylesheet" href="style.css">
+<title>Dashboard - AutoGest</title>
+<style>
+body {
+    margin:0;
+    background:#1a1a2e;
+    font-family:Arial;
+    color:white;
+}
+.sidebar {
+    width:220px;
+    height:100vh;
+    background:#16213e;
+    position:fixed;
+    padding:20px;
+}
+.sidebar h2 { color:#e94560; }
+
+.main {
+    margin-left:240px;
+    padding:40px;
+}
+
+.card {
+    background:#0f3460;
+    padding:20px;
+    border-radius:10px;
+    width:220px;
+    display:inline-block;
+    margin:15px;
+    text-align:center;
+}
+
+.card h3 { margin:0; font-size:28px; }
+.card p { margin:5px 0 0; }
+</style>
 </head>
+
 <body>
 
 <div class="sidebar">
-<h2>AutoGest</h2>
-<a href="#">Dashboard</a>
-<a href="#">Estoque</a>
+    <h2>AutoGest</h2>
+    <p>Dashboard</p>
+    <p>Veículos</p>
+    <p>RENAVE</p>
 </div>
 
-<div class="content">
-<h1>Dashboard</h1>
+<div class="main">
+    <h1>Dashboard</h1>
 
-<div class="card" id="dados"></div>
-
+    <div id="cards"></div>
 </div>
 
-<script src="app.js"></script>
 <script>
-carregarDashboard()
+async function carregarDashboard(){
+    const res = await fetch("http://127.0.0.1:8000/dashboard");
+    const data = await res.json();
+
+    document.getElementById("cards").innerHTML = `
+        <div class="card">
+            <h3>${data.total_veiculos}</h3>
+            <p>Total Veículos</p>
+        </div>
+
+        <div class="card">
+            <h3>${data.em_estoque}</h3>
+            <p>Em Estoque</p>
+        </div>
+
+        <div class="card">
+            <h3>${data.vendidos}</h3>
+            <p>Vendidos</p>
+        </div>
+
+        <div class="card">
+            <h3>R$ ${data.valor_total.toFixed(2)}</h3>
+            <p>Valor Total</p>
+        </div>
+    `;
+}
+
+carregarDashboard();
 </script>
 
 </body>

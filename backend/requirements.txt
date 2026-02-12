@@ -1,6 +1,17 @@
+# Web Server & Framework
 fastapi
-uvicorn
+uvicorn[standard]
+gunicorn
+
+# Banco de Dados
 sqlalchemy
-python-jose
+psycopg2-binary
+
+# Segurança e Autenticação
+python-jose[cryptography]
 passlib[bcrypt]
+bcrypt
+
+# Utilitários
 reportlab
+python-multipart
