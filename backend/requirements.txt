@@ -1,17 +1,22 @@
-# Web Server & Framework
-fastapi
-uvicorn[standard]
-gunicorn
+# --- Web Server & Framework ---
+fastapi                     # Framework principal da API
+uvicorn[standard]           # Servidor ASGI para desenvolvimento e produção
+gunicorn                    # Gerenciador de processos para produção no Linux
 
-# Banco de Dados
-sqlalchemy
-psycopg2-binary
+# --- Banco de Dados ---
+sqlalchemy                  # ORM para mapeamento das tabelas de veículos e usuários
+psycopg2-binary             # Driver para conexão com banco de dados PostgreSQL
 
-# Segurança e Autenticação
-python-jose[cryptography]
-passlib[bcrypt]
-bcrypt
+# --- Segurança e Autenticação ---
+python-jose[cryptography]   # Geração e validação de tokens JWT
+passlib[bcrypt]             # Hashing de senhas (necessário para auth.py)
+bcrypt                      # Algoritmo de criptografia de senhas
 
-# Utilitários
-reportlab
-python-multipart
+# --- Utilitários e Integrações ---
+reportlab                   # Geração de documentos PDF para o RENAVE
+python-multipart            # Suporte para recebimento de formulários e arquivos
+requests                    # Essencial para a integração com a API do SERPRO/RENAVE
+
+# --- Documentação Adicional ---
+# Caso precise de integrações futuras com APIs assíncronas,
+# considere adicionar o 'httpx' futuramente.
