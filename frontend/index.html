@@ -2,39 +2,88 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AutoGest - Login</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Estilo rápido para centralizar o login caso o style.css seja focado no dashboard */
+        body { background: #1a1a2e; color: white; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-card { background: #16213e; padding: 40px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 100%; max-width: 350px; text-align: center; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: none; background: #0f3460; color: white; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #4ecca3; border: none; color: white; font-weight: bold; border-radius: 5px; cursor: pointer; margin-top: 10px; transition: 0.3s; }
+        button:hover { background: #45b393; }
+        .error { color: #ff4d6d; font-size: 14px; margin-top: 10px; display: none; }
+    </style>
 </head>
-<body style="display:flex; align-items:center; justify-content:center; height:100vh; background:#1a1a2e;">
-    <div class="modal-content" style="display:block; width: 350px;">
-        <h2 style="text-align:center; color:#e94560;">AutoGest Login</h2>
-        <input type="email" id="email" placeholder="E-mail" value="admin@admin.com">
-        <input type="password" id="senha" placeholder="Senha" value="admin123">
-        <button onclick="fazerLogin()" style="width:100%; background:#e94560; color:white; padding:12px; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">Entrar</button>
-    </div>
+<body>
 
-    <script>
-        // URL do backend hospedado no Render
-        const API_URL = "https://autogest-backend-ikmb.onrender.com";
+<div class="login-card">
+    <h2>AutoGest</h2>
+    <p style="color: #999;">Acesse sua conta</p>
 
-        async function fazerLogin() {
+    <input type="email" id="email" placeholder="E-mail">
+    <input type="password" id="senha" placeholder="Senha">
+
+    <button onclick="fazerLogin()" id="btnEntrar">Entrar</button>
+    <div id="mensagem-erro" class="error">E-mail ou senha incorretos.</div>
+</div>
+
+<script>
+    // URL do seu Backend no Render
+    const API_URL = "https://autogest-backend-ikmb.onrender.com";
+
+    async function fazerLogin() {
+        const email = document.getElementById("email").value;
+        const senha = document.getElementById("senha").value;
+        const btn = document.getElementById("btnEntrar");
+        const erro = document.getElementById("mensagem-erro");
+
+        if (!email || !senha) {
+            alert("Preencha todos os campos!");
+            return;
+        }
+
+        // Feedback visual de carregamento
+        btn.innerText = "Carregando...";
+        btn.disabled = true;
+        erro.style.display = "none";
+
+        try {
             const res = await fetch(`${API_URL}/login`, {
                 method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({
-                    email: document.getElementById("email").value,
-                    senha: document.getElementById("senha").value
-                })
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, senha })
             });
-            const data = await res.json();
+
+            const dados = await res.json();
+
             if (res.ok) {
-                // Salva o token no navegador para manter o usuário logado
-                localStorage.setItem("token", data.access_token);
+                // Salva o Token e informações do usuário no navegador
+                localStorage.setItem("token", dados.access_token);
+                localStorage.setItem("user_nome", dados.nome);
+                localStorage.setItem("user_role", dados.role);
+
+                // Redireciona para o Dashboard
                 window.location.href = "dashboard.html";
             } else {
-                alert("Erro: Verifique e-mail e senha.");
+                erro.innerText = dados.detail || "Erro ao entrar.";
+                erro.style.display = "block";
             }
+        } catch (error) {
+            console.error(error);
+            erro.innerText = "Erro ao conectar com o servidor.";
+            erro.style.display = "block";
+        } finally {
+            btn.innerText = "Entrar";
+            btn.disabled = false;
         }
-    </script>
+    }
+
+    // Permitir login ao apertar "Enter"
+    document.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') fazerLogin();
+    });
+</script>
+
 </body>
 </html>

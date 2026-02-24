@@ -1,18 +1,15 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
-import requests # Necessário para chamadas externas (SERPRO)
-
+from sqlalchemy import text
+import models
 from database import Base, engine, SessionLocal
-from models import Usuario, Veiculo
-from auth import hash_senha, verificar_senha, criar_token, decodificar_token
+from auth import verificar_senha, criar_token, decodificar_token
 
-# Configuração de segurança para proteger as rotas
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
-app = FastAPI(title="AutoGest API - Produção")
+app = FastAPI(title="AutoGest API - SaaS Edition")
 
-# CORS: Permite que o frontend (Vercel) acesse o backend (Render)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -21,10 +18,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Cria as tabelas automaticamente se não existirem no banco de dados
+# --- INICIALIZAÇÃO ---
 Base.metadata.create_all(bind=engine)
 
-# Dependência para abrir e fechar conexão com o Banco de Dados
+def ajustar_banco_producao():
+    with engine.connect() as conn:
+        try:
+            conn.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS role VARCHAR DEFAULT 'LOJISTA';"))
+            conn.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS empresa_id INTEGER;"))
+            conn.execute(text("ALTER TABLE veiculos ADD COLUMN IF NOT EXISTS empresa_id INTEGER;"))
+            conn.execute(text("ALTER TABLE veiculos ADD COLUMN IF NOT EXISTS ano VARCHAR;"))
+            conn.commit()
+        except Exception as e:
+            print(f"Aviso na migração: {e}")
+
+ajustar_banco_producao()
+
 def get_db():
     db = SessionLocal()
     try:
@@ -32,68 +41,91 @@ def get_db():
     finally:
         db.close()
 
-# Verifica se o token do usuário é válido antes de liberar os dados
-def get_usuario_logado(token: str = Depends(oauth2_scheme)):
+# --- SEGURANÇA ---
+def get_user_info(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     email = decodificar_token(token)
     if not email:
         raise HTTPException(status_code=401, detail="Sessão expirada")
-    return email
+    user = db.query(models.Usuario).filter(models.Usuario.email == email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    if user.role == "LOJISTA" and user.empresa_id:
+        empresa = db.query(models.Empresa).filter(models.Empresa.id == user.empresa_id).first()
+        if not empresa or empresa.status != "ATIVO":
+            raise HTTPException(status_code=403, detail="Conta suspensa")
+    return user
 
 # --- ROTAS DE AUTENTICAÇÃO ---
 @app.post("/login")
 def login(dados: dict, db: Session = Depends(get_db)):
-    """Valida o usuário e devolve um token de acesso"""
-    u = db.query(Usuario).filter(Usuario.email == dados.get("email")).first()
+    u = db.query(models.Usuario).filter(models.Usuario.email == dados.get("email")).first()
     if not u or not verificar_senha(dados.get("senha"), u.senha):
         raise HTTPException(status_code=400, detail="E-mail ou senha incorretos")
-    return {"access_token": criar_token(u.email), "token_type": "bearer"}
+    return {
+        "access_token": criar_token(u.email),
+        "token_type": "bearer",
+        "role": u.role,
+        "nome": u.nome if hasattr(u, 'nome') else u.email
+    }
 
-# --- ROTAS DE GESTÃO (CRUD) ---
+# --- GESTÃO DE ESTOQUE ---
 @app.get("/dashboard")
-def dashboard(db: Session = Depends(get_db), u: str = Depends(get_usuario_logado)):
-    """Calcula os números dos cards (Total e Patrimônio)"""
-    veiculos = db.query(Veiculo).all()
+def dashboard(db: Session = Depends(get_db), user: models.Usuario = Depends(get_user_info)):
+    # Soma apenas veículos em estoque
+    veiculos = db.query(models.Veiculo).filter(
+        models.Veiculo.empresa_id == user.empresa_id,
+        models.Veiculo.status == "EM_ESTOQUE"
+    ).all()
     valor_total = sum(v.valor for v in veiculos) if veiculos else 0
     return {"total_veiculos": len(veiculos), "valor_total": valor_total}
 
 @app.get("/veiculos")
-def listar(db: Session = Depends(get_db), u: str = Depends(get_usuario_logado)):
-    """Retorna a lista completa para a tabela do estoque"""
-    return db.query(Veiculo).all()
+def listar(db: Session = Depends(get_db), user: models.Usuario = Depends(get_user_info)):
+    return db.query(models.Veiculo).filter(
+        models.Veiculo.empresa_id == user.empresa_id,
+        models.Veiculo.status == "EM_ESTOQUE"
+    ).all()
 
 @app.post("/veiculos")
-def criar(dados: dict, db: Session = Depends(get_db), u: str = Depends(get_usuario_logado)):
-    """Cadastra um novo veículo no banco de dados"""
-    novo = Veiculo(
-        marca=dados['marca'],
-        modelo=dados['modelo'],
-        placa=dados['placa'].upper(),
-        valor=dados['valor'],
+def criar(dados: dict, db: Session = Depends(get_db), user: models.Usuario = Depends(get_user_info)):
+    novo = models.Veiculo(
+        marca=dados['marca'], modelo=dados['modelo'],
+        placa=dados['placa'].upper(), valor=dados['valor'],
+        ano=dados.get('ano'), empresa_id=user.empresa_id,
         status="EM_ESTOQUE"
     )
     db.add(novo)
-    db.commit() # Salva no banco de dados
+    db.commit()
     return novo
 
-@app.delete("/veiculos/{id}")
-def excluir(id: int, db: Session = Depends(get_db), u: str = Depends(get_usuario_logado)):
-    """Remove o veículo e atualiza o patrimônio"""
-    v = db.query(Veiculo).filter(Veiculo.id == id).first()
-    if not v: raise HTTPException(status_code=404)
-    db.delete(v)
-    db.commit() # Confirma a exclusão para o dashboard atualizar
-    return {"status": "sucesso"}
+@app.put("/veiculos/{veiculo_id}/vender")
+def vender_veiculo(veiculo_id: int, db: Session = Depends(get_db), user: models.Usuario = Depends(get_user_info)):
+    veiculo = db.query(models.Veiculo).filter(
+        models.Veiculo.id == veiculo_id,
+        models.Veiculo.empresa_id == user.empresa_id
+    ).first()
+    if not veiculo: raise HTTPException(status_code=404)
+    veiculo.status = "VENDIDO"
+    db.commit()
+    return {"status": "venda_concluida"}
 
-# --- INTEGRAÇÃO RENAVE ---
-@app.get("/renave/consultar/{placa}")
-def consultar_serpro(placa: str, u: str = Depends(get_usuario_logado)):
-    """
-    Simula consulta ao SERPRO.
-    Futuramente, aqui entrará o uso do certificado digital do cliente.
-    """
-    return {
-        "marca": "VOLKSWAGEN",
-        "modelo": "POLO TRACK 1.0",
-        "placa": placa.upper(),
-        "ano": 2024
-    }
+@app.delete("/veiculos/{veiculo_id}")
+def excluir_veiculo(veiculo_id: int, db: Session = Depends(get_db), user: models.Usuario = Depends(get_user_info)):
+    veiculo = db.query(models.Veiculo).filter(
+        models.Veiculo.id == veiculo_id,
+        models.Veiculo.empresa_id == user.empresa_id
+    ).first()
+    if not veiculo: raise HTTPException(status_code=404)
+    db.delete(veiculo)
+    db.commit()
+    return {"status": "removido"}
+
+# --- CONFIGURAÇÕES ---
+@app.post("/empresa/certificado")
+async def upload_certificado(senha: str, file: UploadFile = File(...), db: Session = Depends(get_db), user: models.Usuario = Depends(get_user_info)):
+    if user.role != "LOJISTA": raise HTTPException(status_code=403)
+    empresa = db.query(models.Empresa).filter(models.Empresa.id == user.empresa_id).first()
+    empresa.certificado_pfx = await file.read()
+    empresa.senha_certificado = senha
+    db.commit()
+    return {"status": "sucesso"}

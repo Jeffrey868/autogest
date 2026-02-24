@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>AutoGest - Configurações</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="sidebar">
+    <h2>AutoGest</h2>
+    <p onclick="window.location.href='dashboard.html'">📊 Dashboard</p>
+    <p onclick="location.reload()">⚙️ Configurações</p>
+    <p onclick="logout()" style="color: #ff4d6d; margin-top: 50px;">🚪 Sair</p>
+</div>
+
+<div class="content">
+    <h1>Configurações da Loja</h1>
+
+    <div class="stock-container">
+        <h3>Certificado Digital (RENAVE)</h3>
+        <p>Envie seu certificado .pfx para emitir documentos oficiais via SERPRO.</p>
+
+        <div style="margin-top: 20px;">
+            <label>Arquivo do Certificado (.pfx):</label><br>
+            <input type="file" id="certFile" accept=".pfx" style="margin-bottom: 15px;"><br>
+
+            <label>Senha do Certificado:</label><br>
+            <input type="password" id="certSenha" placeholder="Digite a senha do certificado" style="width: 300px; padding: 10px; margin-bottom: 15px;"><br>
+
+            <button onclick="uploadCertificado()" style="background:#4ecca3; color:white; padding:12px 25px; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">
+                💾 Salvar Certificado
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_URL = "https://autogest-backend-ikmb.onrender.com";
+    const token = localStorage.getItem("token");
+
+    if (!token) window.location.href = "index.html";
+
+    async function uploadCertificado() {
+        const fileInput = document.getElementById('certFile');
+        const senha = document.getElementById('certSenha').value;
+
+        if (!fileInput.files[0] || !senha) {
+            alert("Selecione o arquivo e digite a senha!");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+
+        try {
+            // A rota definida no main.py espera a senha como query parameter ou parte do form
+            const res = await fetch(`${API_URL}/empresa/certificado?senha=${senha}`, {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${token}` },
+                body: formData
+            });
+
+            if (res.ok) {
+                alert("Certificado configurado com sucesso!");
+            } else {
+                const erro = await res.json();
+                alert("Erro: " + (erro.detail || "Falha no upload"));
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Erro ao conectar com o servidor.");
+        }
+    }
+
+    function logout() {
+        localStorage.removeItem("token");
+        window.location.href = "index.html";
+    }
+</script>
+</body>
+</html>
