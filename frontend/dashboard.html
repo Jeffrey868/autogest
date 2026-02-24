@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <title>AutoGest - Dashboard</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); justify-content:center; align-items:center; z-index:1000; }
+        .modal-content { background:#16213e; padding:30px; border-radius:10px; width:400px; color:white; }
+        .modal-content input { width:100%; padding:10px; margin:10px 0; border-radius:5px; border:none; background:#0f3460; color:white; }
+    </style>
 </head>
 <body>
 <div class="sidebar">
@@ -15,12 +20,16 @@
 </div>
 
 <div class="content">
-    <h1>Gestão de Estoque</h1>
-    <div id="cards-container" class="dashboard-grid"></div>
+    <h1>Estoque Atual</h1>
+
+    <div style="margin-bottom: 20px; display: flex; gap: 10px;">
+        <input type="text" id="buscaPlaca" placeholder="Digite a Placa" style="padding: 10px; border-radius: 5px; border: none; width: 200px;">
+        <button onclick="consultarERecuperar()" style="background:#4ecca3; border:none; padding:10px 20px; color:white; border-radius:5px; cursor:pointer;">🔍 Consultar RENAVE</button>
+    </div>
 
     <div class="stock-container">
         <table>
-            <thead><tr><th>Veículo</th><th>Placa</th><th>Valor</th><th>Ações</th></tr></thead>
+            <thead><tr><th>Veículo</th><th>Placa</th><th>Ano</th><th>Valor</th><th>Ações</th></tr></thead>
             <tbody id="lista-veiculos"></tbody>
         </table>
     </div>
@@ -28,81 +37,18 @@
 
 <div id="modalVeiculo" class="modal">
     <div class="modal-content">
-        <h3>Cadastrar Veículo</h3>
+        <h3>Entrada de Veículo</h3>
+        <input type="text" id="placa" placeholder="Placa">
         <input type="text" id="marca" placeholder="Marca">
         <input type="text" id="modelo" placeholder="Modelo">
-        <input type="text" id="placa" placeholder="Placa">
-        <input type="number" id="valor" placeholder="Valor (R$)">
-        <button onclick="salvarVeiculo()">Salvar</button>
-        <button onclick="fecharModal()" style="background:#666">Cancelar</button>
+        <input type="text" id="ano" placeholder="Ano (Ex: 2023/2024)">
+        <input type="number" id="valor" placeholder="Valor de Venda (R$)">
+        <input type="text" id="renave_numero" placeholder="Nº Registro RENAVE (Opcional)">
+        <button onclick="salvarVeiculo()" style="width:100%; background:#4ecca3; padding:12px; border:none; color:white; font-weight:bold; cursor:pointer;">Confirmar Cadastro</button>
+        <button onclick="fecharModal()" style="width:100%; background:#666; padding:10px; border:none; color:white; margin-top:5px; cursor:pointer;">Cancelar</button>
     </div>
 </div>
 
-<script>
-    const API_URL = "https://autogest-backend-ikmb.onrender.com";
-    const token = localStorage.getItem("token");
-    if (!token) window.location.href = "index.html";
-
-    async function atualizarTela() {
-        const resDash = await fetch(`${API_URL}/dashboard`, { headers: { "Authorization": `Bearer ${token}` } });
-        const dash = await resDash.json();
-
-        document.getElementById("cards-container").innerHTML = `
-            <div class="card"><h3>${dash.total_veiculos}</h3><p>Veículos no Pátio</p></div>
-            <div class="card"><h3>R$ ${dash.valor_total.toLocaleString()}</h3><p>Patrimônio em Estoque</p></div>
-        `;
-
-        const resLista = await fetch(`${API_URL}/veiculos`, { headers: { "Authorization": `Bearer ${token}` } });
-        const veiculos = await resLista.json();
-        const tbody = document.getElementById("lista-veiculos");
-        tbody.innerHTML = veiculos.map(v => `
-            <tr>
-                <td>${v.marca} ${v.modelo}</td>
-                <td>${v.placa}</td>
-                <td>R$ ${v.valor.toLocaleString()}</td>
-                <td>
-                    <button onclick="vender(${v.id})" style="background:#4ecca3; color:white; border:none; padding:5px; cursor:pointer">✔️ Vender</button>
-                    <button onclick="excluir(${v.id})" style="background:#ff4d6d; color:white; border:none; padding:5px; cursor:pointer">🗑️</button>
-                </td>
-            </tr>
-        `).join("");
-    }
-
-    async function vender(id) {
-        if(confirm("Confirmar venda?")) {
-            await fetch(`${API_URL}/veiculos/${id}/vender`, { method: "PUT", headers: { "Authorization": `Bearer ${token}` } });
-            atualizarTela();
-        }
-    }
-
-    async function excluir(id) {
-        if(confirm("Deseja excluir permanentemente?")) {
-            await fetch(`${API_URL}/veiculos/${id}`, { method: "DELETE", headers: { "Authorization": `Bearer ${token}` } });
-            atualizarTela();
-        }
-    }
-
-    async function salvarVeiculo() {
-        const body = {
-            marca: document.getElementById("marca").value,
-            modelo: document.getElementById("modelo").value,
-            placa: document.getElementById("placa").value,
-            valor: parseFloat(document.getElementById("valor").value)
-        };
-        await fetch(`${API_URL}/veiculos`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-            body: JSON.stringify(body)
-        });
-        fecharModal();
-        atualizarTela();
-    }
-
-    function abrirModal() { document.getElementById("modalVeiculo").style.display = "flex"; }
-    function fecharModal() { document.getElementById("modalVeiculo").style.display = "none"; }
-    function logout() { localStorage.removeItem("token"); window.location.href = "index.html"; }
-
-    atualizarTela();
-</script>
+<script src="app.js"></script>
 </body>
 </html>
