@@ -6,6 +6,7 @@ from sqlalchemy import text
 import models
 from database import Base, engine, SessionLocal
 from auth import verificar_senha, criar_token, decodificar_token
+from datetime import datetime
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 app = FastAPI(title="AutoGest API - SaaS Edition")
@@ -20,19 +21,6 @@ app.add_middleware(
 
 Base.metadata.create_all(bind=engine)
 
-def ajustar_banco_producao():
-    with engine.connect() as conn:
-        try:
-            conn.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS role VARCHAR DEFAULT 'LOJISTA';"))
-            conn.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS empresa_id INTEGER;"))
-            conn.execute(text("ALTER TABLE veiculos ADD COLUMN IF NOT EXISTS empresa_id INTEGER;"))
-            conn.execute(text("ALTER TABLE veiculos ADD COLUMN IF NOT EXISTS ano VARCHAR;"))
-            conn.execute(text("ALTER TABLE veiculos ADD COLUMN IF NOT EXISTS renave_numero VARCHAR;"))
-            conn.commit()
-        except Exception as e:
-            print(f"Aviso na migração: {e}")
-
-ajustar_banco_producao()
 
 def get_db():
     db = SessionLocal()
@@ -41,12 +29,13 @@ def get_db():
     finally:
         db.close()
 
+
 def get_user_info(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     email = decodificar_token(token)
     if not email: raise HTTPException(status_code=401, detail="Sessão expirada")
     user = db.query(models.Usuario).filter(models.Usuario.email == email).first()
-    if not user: raise HTTPException(status_code=404)
     return user
+
 
 @app.post("/login")
 def login(dados: dict, db: Session = Depends(get_db)):
@@ -55,34 +44,55 @@ def login(dados: dict, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="E-mail ou senha incorretos")
     return {"access_token": criar_token(u.email), "token_type": "bearer", "role": u.role, "nome": u.nome}
 
+
 @app.get("/veiculos")
 def listar(db: Session = Depends(get_db), user: models.Usuario = Depends(get_user_info)):
-    return db.query(models.Veiculo).filter(models.Veiculo.empresa_id == user.empresa_id, models.Veiculo.status == "EM_ESTOQUE").all()
+    return db.query(models.Veiculo).filter(
+        models.Veiculo.empresa_id == user.empresa_id,
+        models.Veiculo.status == "EM_ESTOQUE"
+    ).all()
+
 
 @app.post("/veiculos")
 def criar(dados: dict, db: Session = Depends(get_db), user: models.Usuario = Depends(get_user_info)):
     novo = models.Veiculo(
-        marca=dados['marca'],
-        modelo=dados['modelo'],
-        placa=dados['placa'].upper(),
-        valor=float(dados['valor']),
-        ano=dados.get('ano'),
-        renave_numero=dados.get('renave_numero'), # Novo Campo
-        empresa_id=user.empresa_id,
+        marca=dados['marca'], modelo=dados['modelo'],
+        placa=dados['placa'].upper(), valor=float(dados['valor']),
+        ano=dados.get('ano'), empresa_id=user.empresa_id,
         status="EM_ESTOQUE"
     )
     db.add(novo)
     db.commit()
     return novo
 
-@app.get("/renave/consultar/{placa}")
-def consultar_renave(placa: str, db: Session = Depends(get_db), user: models.Usuario = Depends(get_user_info)):
-    # Simulação de consulta ao governo (futura integração SERPRO)
-    return {
-        "marca": "VOLKSWAGEN",
-        "modelo": "GOL 1.0",
-        "placa": placa.upper(),
-        "ano": "2022/2023"
-    }
 
-# Mantive as outras rotas (vender, excluir, certificado) que já funcionavam...
+@app.put("/veiculos/{veiculo_id}/vender")
+def vender_veiculo(veiculo_id: int, dados: dict, db: Session = Depends(get_db),
+                   user: models.Usuario = Depends(get_user_info)):
+    veiculo = db.query(models.Veiculo).filter(
+        models.Veiculo.id == veiculo_id,
+        models.Veiculo.empresa_id == user.empresa_id
+    ).first()
+    if not veiculo: raise HTTPException(status_code=404)
+
+    veiculo.status = "VENDIDO"
+    veiculo.comprador_nome = dados.get('nome')
+    veiculo.comprador_documento = dados.get('documento')
+    veiculo.comprador_endereco = dados.get('endereco')
+    veiculo.valor_venda = float(dados.get('valor_venda', 0))
+    veiculo.data_venda = datetime.now()
+
+    db.commit()
+    return {"status": "sucesso"}
+
+
+@app.delete("/veiculos/{veiculo_id}")
+def excluir(veiculo_id: int, db: Session = Depends(get_db), user: models.Usuario = Depends(get_user_info)):
+    v = db.query(models.Veiculo).filter(
+        models.Veiculo.id == veiculo_id,
+        models.Veiculo.empresa_id == user.empresa_id
+    ).first()
+    if v:
+        db.delete(v)
+        db.commit()
+    return {"status": "removido"}

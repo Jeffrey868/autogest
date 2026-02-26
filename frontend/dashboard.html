@@ -5,47 +5,56 @@
     <title>AutoGest - Dashboard</title>
     <link rel="stylesheet" href="style.css">
     <style>
-        .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); justify-content:center; align-items:center; z-index:1000; }
-        .modal-content { background:#16213e; padding:30px; border-radius:10px; width:400px; color:white; }
-        .modal-content input { width:100%; padding:10px; margin:10px 0; border-radius:5px; border:none; background:#0f3460; color:white; }
+        .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:1000; }
+        .modal-content { background:#16213e; padding:30px; border-radius:10px; width:450px; color:white; }
+        .modal-content input { width:100%; padding:12px; margin:8px 0; border-radius:5px; border:none; background:#0f3460; color:white; box-sizing: border-box; }
+        .btn-venda { background:#4ecca3; color:white; border:none; padding:8px 15px; cursor:pointer; border-radius:4px; font-weight:bold; }
+        table { width:100%; border-collapse: collapse; margin-top:20px; color:white; }
+        th, td { text-align:left; padding:15px; border-bottom: 1px solid #24344d; }
     </style>
 </head>
 <body>
+
 <div class="sidebar">
     <h2>AutoGest</h2>
-    <p onclick="location.reload()">📊 Dashboard</p>
-    <p onclick="abrirModal()">➕ Novo Veículo</p>
-    <p onclick="window.location.href='configuracoes.html'">⚙️ Configurações</p>
-    <p onclick="logout()" style="color: #ff4d6d; margin-top: 50px;">🚪 Sair</p>
+    <p onclick="location.reload()" style="cursor:pointer">📊 Estoque</p>
+    <p onclick="abrirModal('modalCadastro')" style="cursor:pointer">➕ Entrada de Veículo</p>
+    <p onclick="logout()" style="color: #ff4d6d; margin-top: 50px; cursor:pointer">🚪 Sair</p>
 </div>
 
 <div class="content">
-    <h1>Estoque Atual</h1>
+    <h1>Gerenciamento de Estoque</h1>
+    <table>
+        <thead>
+            <tr><th>Veículo</th><th>Placa</th><th>Valor Estoque</th><th>Ações</th></tr>
+        </thead>
+        <tbody id="lista-veiculos"></tbody>
+    </table>
+</div>
 
-    <div style="margin-bottom: 20px; display: flex; gap: 10px;">
-        <input type="text" id="buscaPlaca" placeholder="Digite a Placa" style="padding: 10px; border-radius: 5px; border: none; width: 200px;">
-        <button onclick="consultarERecuperar()" style="background:#4ecca3; border:none; padding:10px 20px; color:white; border-radius:5px; cursor:pointer;">🔍 Consultar RENAVE</button>
-    </div>
-
-    <div class="stock-container">
-        <table>
-            <thead><tr><th>Veículo</th><th>Placa</th><th>Ano</th><th>Valor</th><th>Ações</th></tr></thead>
-            <tbody id="lista-veiculos"></tbody>
-        </table>
+<div id="modalCadastro" class="modal">
+    <div class="modal-content">
+        <h3>Nova Entrada</h3>
+        <input type="text" id="cadPlaca" placeholder="Placa" style="text-transform: uppercase;">
+        <input type="text" id="cadMarca" placeholder="Marca">
+        <input type="text" id="cadModelo" placeholder="Modelo">
+        <input type="text" id="cadAno" placeholder="Ano">
+        <input type="number" id="cadValor" placeholder="Valor de Entrada">
+        <button onclick="salvarVeiculo()" style="width:100%; background:#4ecca3; padding:12px; border:none; color:white; font-weight:bold; cursor:pointer;">SALVAR</button>
+        <button onclick="fecharModal('modalCadastro')" style="width:100%; background:#666; padding:10px; border:none; color:white; margin-top:5px; cursor:pointer;">Cancelar</button>
     </div>
 </div>
 
-<div id="modalVeiculo" class="modal">
+<div id="modalVenda" class="modal">
     <div class="modal-content">
-        <h3>Entrada de Veículo</h3>
-        <input type="text" id="placa" placeholder="Placa">
-        <input type="text" id="marca" placeholder="Marca">
-        <input type="text" id="modelo" placeholder="Modelo">
-        <input type="text" id="ano" placeholder="Ano (Ex: 2023/2024)">
-        <input type="number" id="valor" placeholder="Valor de Venda (R$)">
-        <input type="text" id="renave_numero" placeholder="Nº Registro RENAVE (Opcional)">
-        <button onclick="salvarVeiculo()" style="width:100%; background:#4ecca3; padding:12px; border:none; color:white; font-weight:bold; cursor:pointer;">Confirmar Cadastro</button>
-        <button onclick="fecharModal()" style="width:100%; background:#666; padding:10px; border:none; color:white; margin-top:5px; cursor:pointer;">Cancelar</button>
+        <h3>Venda / RENAVE</h3>
+        <p id="infoVeiculoVenda" style="color:#999; margin-bottom:10px;"></p>
+        <input type="text" id="vendaNome" placeholder="Nome do Comprador">
+        <input type="text" id="vendaDoc" placeholder="CPF ou CNPJ">
+        <input type="text" id="vendaEnd" placeholder="Endereço">
+        <input type="number" id="vendaValorFinal" placeholder="Valor Final da Venda">
+        <button onclick="confirmarVenda()" style="width:100%; background:#4ecca3; padding:12px; border:none; color:white; font-weight:bold; cursor:pointer;">FINALIZAR VENDA</button>
+        <button onclick="fecharModal('modalVenda')" style="width:100%; background:#666; padding:10px; border:none; color:white; margin-top:5px; cursor:pointer;">Voltar</button>
     </div>
 </div>
 
